@@ -2,6 +2,8 @@ import requests
 import subprocess
 from datetime import datetime
 
+crowdsecContainer = False
+crowdsecContainerName = "crowdsec"
 whitelistsFilePath = "/etc/crowdsec/parsers/s02-enrich/publicIpWhitelist.yaml"
 curPubIpFilePath = "./currentIP"
 timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -31,8 +33,12 @@ def write_to_file(filename, content):
         print(timestamp + ": Error while writing the file (" + filename + "):", str(e))
 
 def reloadCrowdsec():
-    subprocess.run(["systemctl", "reload", "crowdsec.service"], capture_output=True, text=True)
-    print(timestamp + ": crowdsec.service reloaded successfully.")
+    if crowdsecContainer:
+        subprocess.run(["docker", "restart", crowdsecContainerName], capture_output=True, text=True)
+        print(timestamp + ": crowdsec container restarted successfully.")
+    else:
+        subprocess.run(["systemctl", "reload", "crowdsec.service"], capture_output=True, text=True)
+        print(timestamp + ": crowdsec.service reloaded successfully.")
 
 whitelistsFileContent = \
 "name: phipzzz/publicIpWhitelist" + "\n" + \

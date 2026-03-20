@@ -1,19 +1,27 @@
 import requests
 import subprocess
+import ipaddress
 from datetime import datetime
 
 crowdsecContainer = False
 crowdsecContainerName = "crowdsec"
 whitelistsFilePath = "/etc/crowdsec/parsers/s02-enrich/publicIpWhitelist.yaml"
-curPubIpFilePath = "./currentIP"
+curPubIpFilePathV4 = "./currentIPv4"
+curPubIpFilePathV6 = "./currentIPv6"
 timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-def get_external_ip():
-    response = requests.get('https://api.ipify.org')
+def get_external_ip(url):
+    response = requests.get(url)
     if response.status_code == 200:
         return response.text
 
-extIP = get_external_ip()
+# Uncomment if you don't want to use IPv4
+extIPv4 = get_external_ip('https://api.ipify.org')
+
+# Uncomment if you don't want to use IPv6/cidr
+extIPv6 = get_external_ip('https://api6.ipify.org')
+# Edit cidr notation to whitelist other network ranges
+extIPv6Cidr = str(ipaddress.IPv6Network((extIPv6 + '/64'), False))
 
 def read_from_file(filename):
     try:
@@ -40,17 +48,29 @@ def reloadCrowdsec():
         subprocess.run(["systemctl", "reload", "crowdsec.service"], capture_output=True, text=True)
         print(timestamp + ": crowdsec.service reloaded successfully.")
 
+# Uncomment unnecessary lines if you don't use them
 whitelistsFileContent = \
-"name: phipzzz/publicIpWhitelist" + "\n" + \
-"description: \"Whitelist events from public IPv4 address\"" + "\n" + \
+"name: fliprocks/publicIpWhitelist" + "\n" + \
+"description: \"Whitelist events from public IP address\"" + "\n" + \
 "whitelist:" + "\n" + \
 "  reason: \"My public IP\"" + "\n" + \
 "  ip:" + "\n" + \
-"    - \"" + extIP + "\""  + "\n" 
+"    - \"" + extIPv4 + "\""  + "\n" \
+"  cidr:" + "\n" + \
+"    - \"" + extIPv6Cidr + "\""  + "\n" \
 
-if read_from_file(curPubIpFilePath) != extIP:
-    print(timestamp + ": Public IP has changed. Setting new IP to whitelist.")
-    write_to_file(curPubIpFilePath, extIP)
+changed = False
+
+if read_from_file(curPubIpFilePathV4) != extIPv4:
+    write_to_file(curPubIpFilePathV4, extIPv4)
+    changed = True
+
+if read_from_file(curPubIpFilePathV6) != extIPv6:
+    write_to_file(curPubIpFilePathV6, extIPv6)
+    changed = True
+
+if changed:
+    print(timestamp + ": Public IP has changed. Writing new IP to whitelist.")
     write_to_file(whitelistsFilePath, whitelistsFileContent)
     reloadCrowdsec()
 else:

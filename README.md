@@ -10,25 +10,44 @@ The script checks the fetched public IP-address against the address stored in th
 
 ## Prerequisites
 
--   Crowdsec up and running
--   Root access to your machine
--   python3
-    -   requests
-    -   subprocess
--   Crowdsec whitelist configuration installed
-    `cscli parsers install crowdsecurity/whitelists`
+- Crowdsec up and running
+- Root access to your machine
+- python3
+    - requests
+    - subprocess
+- Crowdsec whitelist configuration installed
+  `cscli parsers install crowdsecurity/whitelists`
 
 ## How to
 
 1. Install python3 and requests on your Crowdsec machine.
 2. Install crowdsecurity/whitelists. Can be done with `sudo cscli parsers install crowdsecurity/whitelists`.
 3. Copy the `publicIpWhitelister.py`-script to your machine.
-4. Set up a crontab to automatically run the script in the background
+4. Adapt the script to your needs (also see configuration).
+5. Set up a crontab to automatically run the script in the background
    `*/5 * * * * python3 /path/to/script/publicIpWhitelister.py`
    _(you may need to run it as root)_.
-5. Verify your public IP-address was set successfully to the `publicIpWhitelist.yaml` file.
-6. Verify the whitelist is listed in the parsers overview `cscli parsers list`.
+6. Verify your public IP-address was set successfully to the `publicIpWhitelist.yaml` file.
+7. Verify the whitelist is listed in the parsers overview `cscli parsers list`.
+
+## Configuration
+
+It might be necessary to adapt the script to your personal needs. You just need to comment/uncomment lines which are not needed. This might be the IPv6/cidr configuration.
+
+To disable IPv6, uncomment following lines:
+
+```python
+# Uncomment if you don't want to use IPv6/cidr
+extIPv6 = get_external_ip('https://api6.ipify.org')
+# Edit cidr notation to whitelist other network ranges
+extIPv6Cidr = ipaddress.IPv6Network((extIPv6 + '/64'), False)
+
+...
+
+"  cidr" + "\n" + \
+"    - \"" + extIPv6Cidr + "\""  + "\n" \
+```
 
 ## See also
 
--   [Crowdsec whitelist docs](https://docs.crowdsec.net/docs/whitelist/intro)
+- [Crowdsec whitelist docs](https://docs.crowdsec.net/docs/whitelist/intro)
